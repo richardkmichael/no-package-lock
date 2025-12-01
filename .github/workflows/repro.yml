@@ -1,0 +1,35 @@
+name: NPM Reproduction
+on: push
+
+jobs:
+  repro-matrix:
+    name: ${{ matrix.os }} / ${{ matrix.type }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - type: locked
+            cmd: npm clean-install
+          - type: no-package-lock
+            cmd: npm install --no-package-lock
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: ''
+
+      - run: ${{ matrix.cmd }}
+
+      # 1. List dependencies with verbose logging
+      # - 2>&1 captures stderr (verbose logs)
+      # - | tee prints to console AND saves to file
+      - run: npm list --all --verbose 2>&1 | tee tree-${{ matrix.os }}-${{ matrix.type }}.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deps-${{ matrix.os }}-${{ matrix.type }}
+          path: tree-${{ matrix.os }}-${{ matrix.type }}.txt
